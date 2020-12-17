@@ -39,17 +39,17 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
     $curl_err_no = curl_errno($curl_handle);
     $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL);
 
+    if ($curl_err_no) {
+      echo "CURL ERROR: An error was encountered by curl and PAC file could not be retrieved.<BR>";
+      echo "Message: $curl_msg";
+      exit();
+    }
+
     if ($http_resp != "200") {
       echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
       echo "URL Provided: $PAC_SRC<BR>";
       echo "HTTP Response Code: $http_resp<BR>";
       echo "Response Received:<BR>$pac_text<BR>";
-      exit();
-    }
-
-    if ($curl_err_no) {
-      echo "CURL ERROR: An error was encountered by curl and PAC file could not be retrieved.<BR>";
-      echo "Message: $curl_msg";
       exit();
     }
 
