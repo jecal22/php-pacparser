@@ -168,11 +168,11 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
       <td style="border: 1px solid #000000"><input type="text" name="ip" placeholder="192.168.1.100" pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"></td>
     </tr>
     <tr>
-      <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="url">URL<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Full URL passed, as 'url' parameter, to FindProxyForURL function.<P>Must include protocol: http(s), ftp(s), ws(s).</span></div>:</td>
+      <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="url">URL<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Full URL passed, as 'url' parameter, to FindProxyForURL function.<P>Must include protocol: http(s), ftp(s), ws(s). May include port numbers.</span></div>:</td>
       <td style="border: 1px solid #000000"><input style="width: 350px;" type="url" value="https://www.example.com" pattern="^([Hh][Tt][Tt][Pp][Ss]?|[Ff][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\/\/.*$" name="url" placeholder="https://www.example.com" required></td>
     </tr>
     <tr>
-      <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="host">Host<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Hostname/domain part of the URL, passed as 'host' parameter to FindProxyForURL function.<P>If the URL were http://www.google.com/search, then the host would be www.google.com.</span></div>:</td>
+      <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="host">Host<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Hostname/domain part of the URL, passed as 'host' parameter to FindProxyForURL function.<P>If the URL were http://www.google.com/search, then the host would be www.google.com.<P><STRONG>Do not include port numbers</STRONG></span></div>:</td>
       <td style="border: 1px solid #000000"><input style="width: 350px;" type="text" value="www.example.com" name="host" placeholder="www.example.com" required></td>
     </tr>
     <tr>
