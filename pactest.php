@@ -31,17 +31,25 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
     // If valid URL provided, attempt curl download:
     $curl_handle = curl_init();
     curl_setopt_array($curl_handle, array( CURLOPT_URL => htmlspecialchars_decode($PAC_SRC),
-                                           CURLOPT_RETURNTRANSFER => true));
+                                           CURLOPT_RETURNTRANSFER => true,
+                                           CURLOPT_FOLLOWLOCATION => true));
     $pac_text = htmlspecialchars(curl_exec($curl_handle));
     $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
     $curl_err_msg = curl_error($curl_handle);
     $curl_err_no = curl_errno($curl_handle);
+    $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL);
 
     if ($http_resp != "200") {
       echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
       echo "URL Provided: $PAC_SRC<BR>";
       echo "HTTP Response Code: $http_resp<BR>";
       echo "Response Received:<BR>$pac_text<BR>";
+      exit();
+    }
+
+    if ($curl_err_no) {
+      echo "CURL ERROR: An error was encountered by curl and PAC file could not be retrieved.<BR>";
+      echo "Message: $curl_msg";
       exit();
     }
 
@@ -120,7 +128,7 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   </tr>
   <tr>
     <td style="border: 1px solid #000000; font-weight: bold; text-align: right;">PAC URL:</td>
-    <td style="border: 1px solid #000000"><?php echo ($PAC_TYPE == "url") ? $PAC_SRC : "N/A"; ?></td>
+    <td style="border: 1px solid #000000"><?php echo ($PAC_TYPE == "url") ? $curl_url : "N/A"; ?></td>
   </tr>
   <tr>
     <td style="border: 1px solid #000000; font-weight: bold; text-align: right;">Proxy Result:</td>
