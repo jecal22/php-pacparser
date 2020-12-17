@@ -13,17 +13,20 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   // Assign form values to friendly variables
   $URL = (!empty($_POST['url']) ? htmlspecialchars($_POST['url']) : "https://www.google.com"); // URL to test
   $HOST = (!empty($_POST['host']) ? htmlspecialchars($_POST['host']) : "www.google.com"); // Host part of URL
-  $IP = (!empty($_POST['ip']) ? htmlspecialchars($_POST['ip']) : "192.168.1.100"); // Client IP used by myIpAddress() function
-  $NETWORK = htmlspecialchars($_POST['network']); // Forcepoint Network ID
+  $IP = (!empty($_POST['ip']) ? htmlspecialchars($_POST['ip']) : "192.168.1.100"); // Client IP used by myIpAddress() function -- defaults to 192.168.1.100 if none is provided.
+  $NETWORK = htmlspecialchars($_POST['network']); // Forcepoint Network ID -- only used for Forcecpoint Cloud/Hybrid hosted PAC files.
   $PAC_SRC = htmlspecialchars($_POST['pac_source']); // PAC file text or URL for PAC file
   $PAC_TYPE = $_POST['pac_type']; // If PAC Source is a URL or direct TEXT
+
+  // Check provided URL and verify it matches standard URL syntax http(s), ftp(s) or ws(s)
   if (!empty($URL) && !preg_match("/(?:^https?|ftps?|wss?):\/\/.*/i", $URL)) {
     echo "URL Provided is not valid.  Go back and fix.";
     exit();
   }
-  // If PAC text provided is a URL, we need to download it and save to a variable.
+
+  // If PAC type is URL, download PAC file and store in pac_text variable and perform other checks
   if ($PAC_TYPE == "url") {
-    // Verify that a valid http/s URL was provided, display message and exit
+    // Verify that a valid http/s URL was provided, or display message and exit
     if (!empty($PAC_SRC) && !preg_match("/^https?:\/\/.*/i", htmlspecialchars_decode($PAC_SRC))) {
        echo "Invalid URL provided, did you input text? Go back and fix.";
        exit();
@@ -33,12 +36,13 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
     curl_setopt_array($curl_handle, array( CURLOPT_URL => htmlspecialchars_decode($PAC_SRC),
                                            CURLOPT_RETURNTRANSFER => true,
                                            CURLOPT_FOLLOWLOCATION => true));
-    $pac_text = htmlspecialchars(curl_exec($curl_handle));
-    $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
-    $curl_err_msg = curl_error($curl_handle);
-    $curl_err_no = curl_errno($curl_handle);
-    $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL);
+    $pac_text = htmlspecialchars(curl_exec($curl_handle)); // retrieved PAC File text
+    $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE); // HTTP Response code received from curl request
+    $curl_err_msg = curl_error($curl_handle); // Error message provided from curl if error occurred (Does not include HTTP errors)
+    $curl_err_no = curl_errno($curl_handle); //Error number provided by curl in case of curl error.
+    $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL); // Effective (last) URL used by curl -- if original URL was redirected, this will be the redirected URL.
 
+    // If curl returned an error then provide details and exit.
     if ($curl_err_no) {
       echo "CURL ERROR: An error was encountered by curl and PAC file could not be retrieved.<BR>";
       echo "PAC URL Provided: $PAC_SRC<BR>";
@@ -46,6 +50,7 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
       exit();
     }
 
+    // If HTTP resposne from PAC URL did not end up wtih a 200 (initial 302 is OK as long as the final result is 200) the provide error details and exit.
     if ($http_resp != "200") {
       echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
       echo "URL Provided: $PAC_SRC<BR>";
@@ -54,15 +59,16 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
       exit();
     }
 
-    // If a network ID was provided, replace the left side of the filtered location tests to
-    // force a known Network ID instead of what was provided by the dynamic PAC file
+    // If a network ID was provided, replace the left side of the filtered location tests.
+    // This allows simulating a dynamic PAC file downloading from a specific filtered location.
     if (!empty($NETWORK)) {
+      // Test that a Network ID is likely valid -- does not confirm if ID is valid or not, just checks that it only consists of 1 to 10 digits.
       if (!preg_match("/[0-9]{1,10}/", $NETWORK)) {
         echo "Invalid Network ID provided. Go back and fix or leave blank.";
         exit();
       }
-      $NETWORK = "Network_" . $NETWORK;
-      $pac_text = htmlspecialchars(preg_replace("/(Network_[0-9]+)?(' == 'Network_[0-9]+')/","$NETWORK$2",htmlspecialchars_decode($pac_text)));
+      $NETWORK = "Network_" . $NETWORK;  // Concatenate Network_ with the ID provided -- this is the syntax used by Forcepoint
+      $pac_text = htmlspecialchars(preg_replace("/(Network_[0-9]+)?(' == 'Network_[0-9]+')/","$NETWORK$2",htmlspecialchars_decode($pac_text))); // Final PAC result is stored in pac_text
     }
   } else {
     // If PAC source is text, assign it to variable.
@@ -70,15 +76,18 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   }
 
   // Build the pactester command:
-  $cmd = "pactester -p -";
-  $cmd_opts = array();
+  $cmd = "pactester -p -"; // -p - tells pactester to read the PAC contents from stdin which is provided as pipes[0] when executing the command later.
+  $cmd_opts = array(); // Create empty array of options to use.
 
-  // If client IP was provided, need to include the '-c' option for pactester
+  // If client IP was provided, need to add the '-c' option for pactester
+  // Client IP now defaults to 192.168.1.100 even if one is not provided, so this will always be true.
   if (!empty($IP)) {
+    // Check if provided IP is valid.  must be 4 octects separated  by periods, each octet being 0-255.
     if (!preg_match("/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/", $IP)) {
       echo "Invalid Client IP address provided. Go back and fix or leave blank.";
       exit();
     }
+    // set the -c option.
     $cmd_opts[] = "-c $IP";
   }
 
@@ -89,22 +98,26 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   foreach ($cmd_opts as $opt) {
     $cmd = $cmd . " " . $opt;
   }
-
+  // build the command to execute by PHP.  decriptors are 0 = stdin, 1 = stdout, and 2 = stderr.
+  // $pipes is used in php to reference each of the descriptors.
   $cmd_descriptors = array(0 => array("pipe", "r"), 1 => array("pipe", "w"), 2 => array("pipe", "w"));
   $process = proc_open($cmd, $cmd_descriptors, $pipes);
   if (is_resource($process)) {
-    fwrite($pipes[0], htmlspecialchars_decode($pac_text));
-    fclose($pipes[0]);
-    $output = stream_get_contents($pipes[1]);
-    $error = stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    proc_close($process);
+    fwrite($pipes[0], htmlspecialchars_decode($pac_text)); // executes $process and passes $pac_text as stdin.
+    fclose($pipes[0]); // close the stdin pipe
+    $output = stream_get_contents($pipes[1]); // get stdout and store as $output
+    $error = stream_get_contents($pipes[2]); // get stderr and store as $error.
+    fclose($pipes[1]); // close stdout pipe
+    fclose($pipes[2]); // close stderr pipe
+    proc_close($process); // close process
+
+    // if error, then display error and exit.
     if (!empty($error)) {
       echo "Error executing pactester: $error";
       exit();
     }
   }
+  // display final output in formatted table
 ?>
 <table>
   <tr>
