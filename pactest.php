@@ -41,7 +41,7 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
 
     if ($curl_err_no) {
       echo "CURL ERROR: An error was encountered by curl and PAC file could not be retrieved.<BR>";
-      echo "Message: $curl_msg";
+      echo "Message: $curl_err_msg";
       exit();
     }
 
