@@ -23,16 +23,26 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   }
   // If PAC text provided is a URL, we need to download it and save to a variable.
   if ($PAC_TYPE == "url") {
+    // Verify that a valid http/s URL was provided, display message and exit
     if (!empty($PAC_SRC) && !preg_match("/^https?:\/\/.*/i", htmlspecialchars_decode($PAC_SRC))) {
        echo "Invalid URL provided, did you input text? Go back and fix.";
        exit();
     }
-
+    // If valid URL provided, attempt curl download:
     $curl_handle = curl_init();
     curl_setopt_array($curl_handle, array( CURLOPT_URL => htmlspecialchars_decode($PAC_SRC),
                                            CURLOPT_HEADER => 0,
                                            CURLOPT_RETURNTRANSFER => true));
     $pac_text = htmlspecialchars(curl_exec($curl_handle));
+    $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
+
+    if ($http_resp != "200") {
+      echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
+      echo "URL Provided: $PAC_SRC<BR>";
+      echo "HTTP Response Code: $http_resp<BR>";
+      echo "Response Received:<BR>$pac_text<BR>";
+      exit();
+    }
 
     // If a network ID was provided, replace the left side of the filtered location tests to
     // force a known Network ID instead of what was provided by the dynamic PAC file
