@@ -31,10 +31,11 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
     // If valid URL provided, attempt curl download:
     $curl_handle = curl_init();
     curl_setopt_array($curl_handle, array( CURLOPT_URL => htmlspecialchars_decode($PAC_SRC),
-                                           CURLOPT_HEADER => 0,
                                            CURLOPT_RETURNTRANSFER => true));
     $pac_text = htmlspecialchars(curl_exec($curl_handle));
     $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE);
+    $curl_err_msg = curl_error($curl_handle);
+    $curl_err_no = curl_errno($curl_handle);
 
     if ($http_resp != "200") {
       echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
