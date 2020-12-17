@@ -146,7 +146,7 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   </tr>
   <tr>
     <td style="border: 1px solid #000000; font-weight: bold; text-align: right;">Proxy Result:</td>
-    <td style="border: 1px solid #000000; font-weight: bold; font-size: 20px;"><B><?php echo $output; ?></B></td>
+    <td style="border: 1px solid #000000; font-weight: bold; font-size: 15px;"><B><?php echo $output; ?></B></td>
   </tr>
 </table>
 <BR>
