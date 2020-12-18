@@ -31,16 +31,18 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
        echo "Invalid URL provided, did you input text? Go back and fix.";
        exit();
     }
-    // If valid URL provided, attempt curl download:
+    // If valid URL provided, get HTTP Headers without body first.
     $curl_handle = curl_init();
     curl_setopt_array($curl_handle, array( CURLOPT_URL => htmlspecialchars_decode($PAC_SRC),
-                                           CURLOPT_RETURNTRANSFER => true,
-                                           CURLOPT_FOLLOWLOCATION => true));
-    $pac_text = htmlspecialchars(curl_exec($curl_handle)); // retrieved PAC File text
+                                           CURLOPT_NOBODY => true,
+                                           CURLOPT_HEADER => 1,
+                                           CURLOPT_FOLLOWLOCATION => true,
+                                           CURLOPT_RETURNTRANSFER => true));
+    $response_headers = curl_exec($curl_handle);
+    $content_type = curl_getinfo($curl_handle, CURLINFO_CONTENT_TYPE);
     $http_resp = curl_getinfo($curl_handle, CURLINFO_HTTP_CODE); // HTTP Response code received from curl request
     $curl_err_msg = curl_error($curl_handle); // Error message provided from curl if error occurred (Does not include HTTP errors)
     $curl_err_no = curl_errno($curl_handle); //Error number provided by curl in case of curl error.
-    $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL); // Effective (last) URL used by curl -- if original URL was redirected, this will be the redirected URL.
 
     // If curl returned an error then provide details and exit.
     if ($curl_err_no) {
@@ -55,9 +57,28 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
       echo "CURL Error: Unable to retrieve PAC file from provided URL<BR>";
       echo "URL Provided: $PAC_SRC<BR>";
       echo "HTTP Response Code: $http_resp<BR>";
-      echo "Response Received:<BR>$pac_text<BR>";
       exit();
     }
+
+    // If content-type header is not application/x-ns-proxy-autoconfig, display error and exit.
+    if ($content_type != "application/x-ns-proxy-autoconfig") {
+      echo "PAC URL Provided does not appear to be a valid PAC file content-type. <P>";
+      echo "PAC URL Provided: $PAC_SRC<BR>";
+      echo "HTTP Content-Type Received: $content_type<BR>";
+      exit();
+    }
+
+    // After URL is confirmed a PAC URL, valid, and no errors, then proceed with curl download:
+    // update curl_handle to exclude headers and include body and re-execute curl command to download PAC file
+    curl_setopt_array($curl_handle, array( CURLOPT_NOBODY => false,
+                                           CURLOPT_HEADER => 0));
+    $response = curl_exec($curl_handle);
+
+    $pac_text = htmlspecialchars(curl_exec($curl_handle)); // retrieved PAC File text
+
+    $curl_url = curl_getinfo($curl_handle, CURLINFO_EFFECTIVE_URL); // Effective (last) URL used by curl -- if original URL was redirected, this will be the redirected URL.
+
+
 
     // If a network ID was provided, replace the left side of the filtered location tests.
     // This allows simulating a dynamic PAC file downloading from a specific filtered location.
