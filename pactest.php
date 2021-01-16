@@ -8,7 +8,6 @@
 <?php
 // If form is submitted (POST)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   $error = array();
   // Assign form values to friendly variables
   $URL = (!empty($_POST['url']) ? htmlspecialchars($_POST['url']) : "https://www.google.com"); // URL to test
@@ -18,6 +17,14 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
   $PAC_SRC = htmlspecialchars($_POST['pac_source']); // PAC file text or URL for PAC file
   $PAC_TYPE = $_POST['pac_type']; // If PAC Source is a URL or direct TEXT
 
+  echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
+  // Build URL for bookmarking/sharing as a GET request if PAC URL is used:
+  $get_url = (isset($_SERVER['HTTPS']) or isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) ? 'https://' : 'http://';
+  $get_url = $get_url . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'] . "?url=" . rawurlencode($URL) . "&host=$HOST";
+  $get_url = ($PAC_TYPE == "url") ? $get_url . "&pac_url=" . rawurlencode($PAC_SRC) : $get_url;
+  $get_url = (!empty($_POST['ip'])) ? $get_url . "&client_ip=$IP" : $get_url;
+  $get_url = (!empty($_POST['network'])) ? $get_url . "&network_id=$NETWORK" : $get_url; 
+  echo ($PAC_TYPE == "url") ? "<a href=\"$get_url\">Bookmark this test</a><BR>" : "";
   // Check provided URL and verify it matches standard URL syntax http(s), ftp(s) or ws(s)
   if (!empty($URL) && !preg_match("/(?:^https?|ftps?|wss?):\/\/.*/i", $URL)) {
     echo "URL Provided is not valid.  Go back and fix.";
@@ -178,30 +185,31 @@ echo "<a href=\"javascript:history.back()\">Go Back to Form</a><BR>";
 } else {
 ?>
 <!-- Display form -->
+<?php $pac_is_url = isset($_GET['pac_url']); ?>
 <form method="POST" action="<?php echo $_SERVER['PHP_SELF']; ?>">
   <table>
     <tr>
       <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="network">Forcepoint Network ID</label><div class="tooltip">(?)<span class="tooltiptext">Optional<P>Description: This is the internally assigned Network ID for a particular filtered location (IP address/range) used by Forcepoint Cloud/Hybrid Web Filtering hostred PAC files.  The network ID is expressed as Network_1234567.</span></div>:</td>
-      <td style="border: 1px solid #000000"> Network_<input type="text" name="network" placeholder="1234567" pattern="^[0-9]{1,10}$"></td>
+      <td style="border: 1px solid #000000"> Network_<input type="text" name="network" placeholder="1234567" value="<?php echo isset($_GET['network_id']) ? $_GET['network_id'] : ''; ?>" pattern="^[0-9]{1,10}$"></td>
     </tr>
     <tr>
       <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="ip">Client IP<div class="tooltip">(?)<span class="tooltiptext">Optional.<P>Description: Used to populate the myIpAddress() function inside the PAC file.<P> Note: Has no function if myIpAddress() is not used.</span></div>:</td>
-      <td style="border: 1px solid #000000"><input type="text" name="ip" placeholder="192.168.1.100" pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"></td>
+      <td style="border: 1px solid #000000"><input type="text" name="ip" placeholder="192.168.1.100" value="<?php echo isset($_GET['client_ip']) ? $_GET['client_ip'] : ''; ?>" pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"></td>
     </tr>
     <tr>
       <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="url">URL<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Full URL passed, as 'url' parameter, to FindProxyForURL function.<P>Must include protocol: http(s), ftp(s), ws(s). May include port numbers.</span></div>:</td>
-      <td style="border: 1px solid #000000"><input style="width: 350px;" type="url" value="https://www.example.com" pattern="^([Hh][Tt][Tt][Pp][Ss]?|[Ff][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\/\/.*$" name="url" placeholder="https://www.example.com" required></td>
+      <td style="border: 1px solid #000000"><input style="width: 350px;" type="url" value="<?php echo isset($_GET['url']) ? rawurldecode($_GET['url']) : 'https://www.example.com'; ?>" pattern="^([Hh][Tt][Tt][Pp][Ss]?|[Ff][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\/\/.*$" name="url" placeholder="https://www.example.com" required></td>
     </tr>
     <tr>
       <td style="border: 1px solid #000000; font-weight: bold;" align="right"><label for="host">Host<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Hostname/domain part of the URL, passed as 'host' parameter to FindProxyForURL function.<P>If the URL were http://www.google.com/search, then the host would be www.google.com.<P><STRONG>Do not include port numbers</STRONG></span></div>:</td>
-      <td style="border: 1px solid #000000"><input style="width: 350px;" type="text" value="www.example.com" name="host" placeholder="www.example.com" required></td>
+      <td style="border: 1px solid #000000"><input style="width: 350px;" type="text" value="<?php echo isset($_GET['host']) ? $_GET['host'] : 'www.example.com'; ?>" name="host" placeholder="www.example.com" required></td>
     </tr>
     <tr>
       <td style="border: 1px solid #000000; font-weight: bold; text-align: right; vertical-align: top;">PAC File<div class="tooltip"><font color="red"><sup>*</sup></font>(?)<span class="tooltiptext">Required<P>Description: Select if you are supplying a PAC file URL (http/s allowed) or the full text of a PAC file.<P>If supplying a URL, should be in the format http://domain.com/proxy.pac.<P>If supply PAC file text, it should be include the full FindProxyForURL() function definition:<P>function FindProxyForURL(url, host)<BR>&#123;<BR>&nbsp;&nbsp;&nbsp;//PAC Logic Here<BR>&#125;</span></pre></div>:</td>
       <td style="border: 1px solid #000000">
-        <input type="radio" name="pac_type" value="url">URL</input><input type="radio" name="pac_type" value="text" checked>Text</input><BR>
+        <input type="radio" name="pac_type" value="url" <?php echo $pac_is_url ? 'checked' : ''; ?>>URL</input><input type="radio" name="pac_type" value="text" <?php echo $pac_is_url ? '' : 'checked'; ?>>Text</input><BR>
         Text/URL:<BR>
-        <textarea style="width: 700px; height: 400px;" name="pac_source" placeholder="Insert URL to PAC file, or paste PAC file contents here..." required></textarea><BR>
+        <textarea style="width: 700px; height: 400px;" name="pac_source" placeholder="Insert URL to PAC file, or paste PAC file contents here..." required><?php echo $pac_is_url ? $_GET['pac_url'] : ''; ?></textarea><BR>
         <input type="submit" value="submit" name="submit">
       </td>
     </tr>
